@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Esquina del Buen Sabor — Carta Digital y Pedidos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary: #b91c1c;      /* Rojo apetitoso hostelería */
+      --primary-dark: #991b1b;
+      --accent: #f59e0b;       /* Ámbar cálido */
+      --bg-page: #fafaf9;
+      --bg-card: #ffffff;
+      --text-main: #1c1917;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding-bottom: 100px;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- CABECERA DEL NEGOCIO -->
+  <header class="bg-stone-900 text-white shadow-md">
+    <div class="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3.5">
+        <div id="bizLogo" class="w-14 h-14 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center text-3xl font-black shadow">
+          🥖
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 id="bizName" class="text-xl sm:text-2xl font-extrabold leading-tight">La Esquina del Buen Sabor</h1>
+          </div>
+          <p id="bizTagline" class="text-stone-300 text-xs sm:text-sm">Bocatería, Raciones y Café · Recogida y Mesa</p>
+          <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs font-semibold">
+            <span class="px-2 py-0.5 rounded-full bg-emerald-600/30 text-emerald-300 border border-emerald-500/40">● Abierto ahora</span>
+            <span id="bizAddress" class="text-stone-400">📍 C/ Mayor 24, Zaragoza</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- BARRA PEGAJOSA DE BÚSQUEDA Y CATEGORÍAS -->
+  <div class="sticky top-0 z-30 bg-stone-50/95 backdrop-blur border-b border-stone-200 shadow-sm">
+    <div class="max-w-3xl mx-auto px-4 pt-3 pb-2 space-y-2.5">
+      <div class="flex gap-2">
+        <input
+          id="searchInput"
+          type="search"
+          oninput="renderMenu()"
+          placeholder="Buscar bocadillo, tapa, bebida..."
+          class="w-full px-4 py-2.5 rounded-xl bg-white border border-stone-300 text-sm sm:text-base focus:outline-none focus:border-red-700"
+        />
+        <select
+          id="dietFilter"
+          onchange="renderMenu()"
+          aria-label="Filtrar por preferencia"
+          class="px-3 py-2.5 rounded-xl bg-white border border-stone-300 text-xs sm:text-sm font-bold text-stone-700"
+        >
+          <option value="all">Todos</option>
+          <option value="sin_gluten">🌾 Sin Gluten</option>
+          <option value="veggie">🥗 Vegetariano</option>
+          <option value="popular">⭐ Top Ventas</option>
+        </select>
+      </div>
+
+      <!-- Pestañas de categorías -->
+      <div id="categoryTabs" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+    </div>
+  </div>
+
+  <!-- LISTADO DE PRODUCTOS -->
+  <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-5 space-y-6">
+    <div id="menuContainer" class="space-y-6"></div>
+  </main>
+
+  <!-- PIE DE PÁGINA CON ACCESO AL PANEL DEL DUEÑO -->
+  <footer class="max-w-3xl w-full mx-auto px-4 py-6 text-center text-xs text-stone-500 space-y-2 border-t border-stone-200">
+    <p>Pedidos directos sin comisiones · Precios con IVA incluido</p>
+    <div class="flex justify-center gap-4">
+      <button onclick="openOwnerLogin()" class="underline font-bold text-stone-600 hover:text-stone-900">
+        ⚙️ Modo Dueño (Editar carta / QR)
+      </button>
+    </div>
+  </footer>
+
+  <!-- BARRA FLOTANTE INFERIOR DEL CARRITO -->
+  <div id="floatingCartBar" class="fixed bottom-0 inset-x-0 z-40 p-3 bg-gradient-to-t from-stone-900/20 to-transparent pointer-events-none hidden">
+    <div class="max-w-3xl mx-auto pointer-events-auto">
+      <button onclick="openCartModal()" class="w-full py-4 px-5 rounded-2xl bg-red-700 hover:bg-red-800 text-white shadow-xl flex items-center justify-between font-extrabold text-base sm:text-lg transition">
+        <div class="flex items-center gap-2.5">
+          <span id="cartCountBadge" class="px-2.5 py-0.5 rounded-lg bg-white text-red-700 font-black text-sm">0</span>
+          <span>Ver mi pedido</span>
+        </div>
+        <span id="cartTotalBadge" class="text-lg sm:text-xl">0,00 €</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL DEL CARRITO Y ENVÍO POR WHATSAPP -->
+  <div id="cartModal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between border-b border-stone-200 pb-3">
+        <h2 class="text-xl sm:text-2xl font-extrabold">🛒 Tu Pedido</h2>
+        <button onclick="closeCartModal()" class="px-3 py-1.5 rounded-xl bg-stone-100 font-bold text-stone-700">Cerrar ✕</button>
+      </div>
+
+      <div id="cartItemsList" class="space-y-3"></div>
+
+      <!-- Opciones de entrega -->
+      <div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+        <label class="block text-sm font-extrabold text-stone-800">¿Cómo quieres tu pedido?</label>
+        <div class="grid grid-cols-3 gap-2 text-xs sm:text-sm font-bold">
+          <button type="button" onclick="setOrderMode('recoger')" id="mode-recoger" class="py-2.5 px-2 rounded-xl border-2 border-red-700 bg-red-50 text-red-800">
+            🛍️ Recoger
+          </button>
+          <button type="button" onclick="setOrderMode('mesa')" id="mode-mesa" class="py-2.5 px-2 rounded-xl border-2 border-stone-300 bg-white text-stone-700">
+            🪑 En Mesa
+          </button>
+          <button type="button" onclick="setOrderMode('domicilio')" id="mode-domicilio" class="py-2.5 px-2 rounded-xl border-2 border-stone-300 bg-white text-stone-700">
+            🛵 Domicilio
+          </button>
+        </div>
+
+        <div id="orderExtraField" class="space-y-2">
+          <input id="customerName" type="text" placeholder="Tu nombre (ej. Carlos)" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm" />
+          <input id="customerDetail" type="text" placeholder="Hora aproximada de recogida (ej. 14:15)" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm" />
+        </div>
+
+        <input id="orderNotes" type="text" placeholder="Notas (ej. sin cebolla, pan muy tostado...)" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm" />
+      </div>
+
+      <div class="flex items-center justify-between text-xl font-black pt-1">
+        <span>Total a pagar:</span>
+        <span id="modalTotalAmount" class="text-red-700">0,00 €</span>
+      </div>
+
+      <button onclick="sendOrderWhatsApp()" class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-lg shadow-lg flex items-center justify-center gap-2.5">
+        <span>📲</span>
+        <span>Enviar Pedido por WhatsApp</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL PANEL DEL DUEÑO (EDICIÓN RÁPIDA + QR) -->
+  <div id="ownerModal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-2xl rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto space-y-5">
+      <div class="flex items-center justify-between border-b border-stone-200 pb-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-extrabold">⚙️ Panel de Gestión del Negocio</h2>
+          <p class="text-xs text-stone-500">Activa/desactiva platos agotados, edita precios o imprime tu QR.</p>
+        </div>
+        <button onclick="closeOwnerModal()" class="px-3 py-1.5 rounded-xl bg-stone-100 font-bold">Cerrar ✕</button>
+      </div>
+
+      <!-- Configuración rápida del negocio -->
+      <div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+        <h3 class="font-extrabold text-sm uppercase tracking-wide text-stone-700">1. Datos del Local y WhatsApp</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="text-xs font-bold text-stone-600">Nombre del negocio</label>
+            <input id="editBizName" type="text" class="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm font-bold" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-stone-600">Teléfono WhatsApp (con 34 delante)</label>
+            <input id="editBizPhone" type="text" placeholder="34600000000" class="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm font-bold" />
+          </div>
+        </div>
+        <button onclick="saveBusinessInfo()" class="px-4 py-2 rounded-xl bg-stone-900 text-white font-bold text-sm">
+          💾 Guardar datos del negocio
+        </button>
+      </div>
+
+      <!-- Código QR para mesas/mostrador -->
+      <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="space-y-1">
+          <h3 class="font-extrabold text-base text-amber-950">2. Código QR para Mesas o Mostrador</h3>
+          <p class="text-xs text-amber-900">Los clientes escanean este código con la cámara del móvil y abren la carta al instante.</p>
+          <button onclick="window.print()" class="mt-2 inline-block px-4 py-2 rounded-xl bg-amber-600 text-white font-bold text-xs">
+            🖨️ Imprimir pantalla / QR
+          </button>
+        </div>
+        <img id="qrImage" alt="Código QR de la carta" class="w-28 h-28 rounded-xl bg-white p-1.5 border border-amber-300 shadow-sm" />
+      </div>
+
+      <!-- Añadir nuevo producto -->
+      <div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+        <h3 class="font-extrabold text-sm uppercase tracking-wide text-stone-700">3. Añadir Nuevo Producto</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input id="newProdName" type="text" placeholder="Nombre (ej. Tortilla casera)" class="px-3 py-2 rounded-xl border border-stone-300 text-sm" />
+          <select id="newProdCat" class="px-3 py-2 rounded-xl border border-stone-300 text-sm font-bold"></select>
+          <input id="newProdPrice" type="number" step="0.10" placeholder="Precio € (ej. 4.50)" class="px-3 py-2 rounded-xl border border-stone-300 text-sm" />
+        </div>
+        <input id="newProdDesc" type="text" placeholder="Descripción corta (ingredientes...)" class="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm" />
+        <button onclick="addNewProduct()" class="px-4 py-2 rounded-xl bg-red-700 text-white font-bold text-sm">
+          ➕ Añadir a la carta
+        </button>
+      </div>
+
+      <!-- Lista editable de productos -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="font-extrabold text-sm uppercase tracking-wide text-stone-700">4. Disponibilidad y Precios</h3>
+          <button onclick="resetDemoCatalog()" class="text-xs underline text-stone-500">Restaurar carta de ejemplo</button>
+        </div>
+        <div id="ownerProductList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // CONFIGURACIÓN INICIAL DEL NEGOCIO (Personalizable por cliente)
+    const DEFAULT_BIZ = {
+      name: "La Esquina del Buen Sabor",
+      tagline: "Bocatería, Raciones y Café · Recogida y Mesa",
+      address: "📍 C/ Mayor 24, Zaragoza",
+      logo: "🥖",
+      whatsapp: "34600123456",
+      pin: "1234"
+    };
+
+    const DEFAULT_CATEGORIES = [
+      { id: "bocadillos", name: "🥖 Bocadillos" },
+      { id: "raciones", name: "🍟 Raciones y Tapas" },
+      { id: "platos", name: "🍳 Platos Combinados" },
+      { id: "bebidas", name: "🥤 Bebidas y Cafés" },
+      { id: "postres", name: "🍰 Postres Caseros" }
+    ];
+
+    const DEFAULT_PRODUCTS = [
+      { id: 1, cat: "bocadillos", name: "Bocadillo Serrano con Tomate", desc: "Jamón serrano reserva, tomate natural rallado y aceite de oliva virgen extra en pan crujiente.", price: 5.50, tags: ["popular"], available: true },
+      { id: 2, cat: "bocadillos", name: "Pepito de Ternera con Pimientos", desc: "Filete tierno de ternera a la plancha con pimientos verdes fritos.", price: 6.80, tags: ["popular"], available: true },
+      { id: 3, cat: "bocadillos", name: "Bocadillo Vegetal Completo", desc: "Lechuga fresca, tomate, huevo duro, espárragos, atún y mayonesa suave.", price: 5.20, tags: ["veggie"], available: true },
+      { id: 4, cat: "bocadillos", name: "Tortilla de Patata Casera", desc: "Jugosa tortilla recién hecha con o sin cebolla en pan recién horneado.", price: 4.80, tags: ["veggie", "popular"], available: true },
+
+      { id: 5, cat: "raciones", name: "Patatas Bravas de la Casa", desc: "Patatas cortadas a mano con nuestra salsa brava casera y toque de alioli.", price: 5.90, tags: ["veggie", "sin_gluten", "popular"], available: true },
+      { id: 6, cat: "raciones", name: "Croquetas Caseras de Jamón (6 uds)", desc: "Cremosas por dentro y crujientes por fuera, receta tradicional.", price: 6.50, tags: ["popular"], available: true },
+      { id: 7, cat: "raciones", name: "Calamares a la Romana", desc: "Anillas tiernas rebozadas con limón natural y salsa tártara.", price: 7.90, tags: [], available: true },
+      { id: 8, cat: "raciones", name: "Tabla de Quesos Curados", desc: "Selección de quesos nacionales con nueces y membrillo.", price: 8.50, tags: ["veggie", "sin_gluten"], available: true },
+
+      { id: 9, cat: "platos", name: "Pechuga a la Plancha Completa", desc: "Dos filetes de pechuga de pollo, patatas fritas caseras, pimiento verde y huevo frito.", price: 9.50, tags: ["sin_gluten", "popular"], available: true },
+      { id: 10, cat: "platos", name: "Lomo Adobado con Huevo y Patatas", desc: "Cinta de lomo adobado tradicional acompañada de guarnición completa.", price: 9.80, tags: ["sin_gluten"], available: true },
+
+      { id: 11, cat: "bebidas", name: "Refresco Frío (Lata 33cl)", desc: "Cola, naranja, limón o tónica bien fríos.", price: 2.20, tags: ["veggie", "sin_gluten"], available: true },
+      { id: 12, cat: "bebidas", name: "Agua Mineral 50cl", desc: "Botella de agua mineral natural fría o del tiempo.", price: 1.50, tags: ["veggie", "sin_gluten"], available: true },
+      { id: 13, cat: "bebidas", name: "Café con Leche / Solo", desc: "Café 100 % arábica recién molido.", price: 1.60, tags: ["veggie", "sin_gluten"], available: true },
+
+      { id: 14, cat: "postres", name: "Tarta de Queso Casera", desc: "Porción cremosa al horno con cobertura suave de frutos rojos.", price: 4.20, tags: ["veggie", "popular"], available: true },
+      { id: 15, cat: "postres", name: "Flan de Huevo Tradicional", desc: "Elaborado a fuego lento con caramelo líquido y nata.", price: 3.50, tags: ["veggie", "sin_gluten"], available: true }
+    ];
+
+    let bizInfo = { ...DEFAULT_BIZ };
+    let products = [];
+    let selectedCategory = "all";
+    let cart = {}; // { productId: quantity }
+    let orderMode = "recoger";
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadData();
+      applyBizHeader();
+      renderCategoryTabs();
+      renderMenu();
+    });
+
+    function loadData() {
+      try {
+        const savedBiz = JSON.parse(localStorage.getItem("bizApp_info"));
+        if (savedBiz) bizInfo = { ...DEFAULT_BIZ, ...savedBiz };
+        const savedProds = JSON.parse(localStorage.getItem("bizApp_products"));
+        products = Array.isArray(savedProds) && savedProds.length ? savedProds : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+      } catch (e) {
+        products = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem("bizApp_info", JSON.stringify(bizInfo));
+      localStorage.setItem("bizApp_products", JSON.stringify(products));
+    }
+
+    function applyBizHeader() {
+      document.title = `${bizInfo.name} — Carta Digital`;
+      document.getElementById("bizName").textContent = bizInfo.name;
+      document.getElementById("bizTagline").textContent = bizInfo.tagline;
+      document.getElementById("bizAddress").textContent = bizInfo.address;
+      document.getElementById("bizLogo").textContent = bizInfo.logo;
+    }
+
+    function formatPrice(num) {
+      return num.toFixed(2).replace(".", ",") + " €";
+    }
+
+    function renderCategoryTabs() {
+      const tabsEl = document.getElementById("categoryTabs");
+      const allTab = `<button onclick="selectCategory('all')" class="px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition ${
+        selectedCategory === "all" ? "bg-red-700 text-white shadow" : "bg-white text-stone-700 border border-stone-300"
+      }">🍽️ Todo</button>`;
+
+      const catTabs = DEFAULT_CATEGORIES.map(c => `
+        <button onclick="selectCategory('${c.id}')" class="px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition ${
+          selectedCategory === c.id ? "bg-red-700 text-white shadow" : "bg-white text-stone-700 border border-stone-300"
+        }">${c.name}</button>
+      `).join("");
+
+      tabsEl.innerHTML = allTab + catTabs;
+    }
+
+    function selectCategory(catId) {
+      selectedCategory = catId;
+      renderCategoryTabs();
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const search = document.getElementById("searchInput").value.trim().toLowerCase();
+      const diet = document.getElementById("dietFilter").value;
+      const container = document.getElementById("menuContainer");
+
+      const catsToRender = selectedCategory === "all"
+        ? DEFAULT_CATEGORIES
+        : DEFAULT_CATEGORIES.filter(c => c.id === selectedCategory);
+
+      let html = "";
+      catsToRender.forEach(cat => {
+        const items = products.filter(p => {
+          if (p.cat !== cat.id) return false;
+          if (diet !== "all" && !(p.tags || []).includes(diet)) return false;
+          if (search && !`${p.name} ${p.desc}`.toLowerCase().includes(search)) return false;
+          return true;
+        });
+
+        if (items.length === 0) return;
+
+        html += `
+          <section class="space-y-3">
+            <h2 class="text-lg sm:text-xl font-extrabold text-stone-900 px-1">${cat.name}</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              ${items.map(item => renderProductCard(item)).join("")}
+            </div>
+          </section>
+        `;
+      });
+
+      container.innerHTML = html || `
+        <div class="bg-white rounded-2xl p-8 text-center border border-stone-200 text-stone-500">
+          No hay productos que coincidan con tu búsqueda.
+        </div>
+      `;
+    }
+
+    function renderProductCard(item) {
+      const qty = cart[item.id] || 0;
+      const badges = (item.tags || []).map(t => {
+        if (t === "sin_gluten") return `<span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[11px] font-bold">🌾 Sin Gluten</span>`;
+        if (t === "veggie") return `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-bold">🥗 Veggie</span>`;
+        if (t === "popular") return `<span class="px-2 py-0.5 rounded-md bg-red-100 text-red-900 text-[11px] font-bold">⭐ Top</span>`;
+        return "";
+      }).join("");
+
+      const actionBtn = !item.available
+        ? `<span class="px-3 py-1.5 rounded-xl bg-stone-200 text-stone-500 font-bold text-xs">Agotado hoy</span>`
+        : qty === 0
+        ? `<button onclick="changeQty(${item.id}, 1)" class="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white font-extrabold text-sm shadow-sm">+ Añadir</button>`
+        : `
+          <div class="flex items-center gap-2 bg-stone-100 rounded-xl p-1 border border-stone-300">
+            <button onclick="changeQty(${item.id}, -1)" class="w-8 h-8 rounded-lg bg-white font-black text-stone-800 shadow-sm">−</button>
+            <span class="font-black text-sm min-w-[20px] text-center">${qty}</span>
+            <button onclick="changeQty(${item.id}, 1)" class="w-8 h-8 rounded-lg bg-red-700 text-white font-black shadow-sm">+</button>
+          </div>
+        `;
+
+      return `
+        <article class="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm flex flex-col justify-between gap-3 ${!item.available ? "opacity-65" : ""}">
+          <div class="space-y-1.5">
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="font-extrabold text-base sm:text-lg leading-snug">${item.name}</h3>
+              <span class="font-black text-base sm:text-lg text-red-700 whitespace-nowrap">${formatPrice(item.price)}</span>
+            </div>
+            <p class="text-xs sm:text-sm text-stone-600 leading-relaxed">${item.desc}</p>
+            <div class="flex flex-wrap gap-1 pt-0.5">${badges}</div>
+          </div>
+          <div class="flex justify-end pt-1">
+            ${actionBtn}
+          </div>
+        </article>
+      `;
+    }
+
+    function changeQty(prodId, delta) {
+      const next = (cart[prodId] || 0) + delta;
+      if (next <= 0) delete cart[prodId];
+      else cart[prodId] = next;
+      renderMenu();
+      updateCartBar();
+      if (!document.getElementById("cartModal").classList.contains("hidden")) {
+        renderCartModalItems();
+      }
+    }
+
+    function updateCartBar() {
+      const bar = document.getElementById("floatingCartBar");
+      let count = 0;
+      let total = 0;
+
+      Object.entries(cart).forEach(([id, qty]) => {
+        const p = products.find(item => item.id === Number(id));
+        if (p) {
+          count += qty;
+          total += p.price * qty;
+        }
+      });
+
+      if (count === 0) {
+        bar.classList.add("hidden");
+      } else {
+        bar.classList.remove("hidden");
+        document.getElementById("cartCountBadge").textContent = count;
+        document.getElementById("cartTotalBadge").textContent = formatPrice(total);
+      }
+    }
+
+    function openCartModal() {
+      renderCartModalItems();
+      document.getElementById("cartModal").classList.remove("hidden");
+    }
+
+    function closeCartModal() {
+      document.getElementById("cartModal").classList.add("hidden");
+    }
+
+    function renderCartModalItems() {
+      const list = document.getElementById("cartItemsList");
+      let total = 0;
+      const entries = Object.entries(cart);
+
+      if (entries.length === 0) {
+        closeCartModal();
+        return;
+      }
+
+      list.innerHTML = entries.map(([id, qty]) => {
+        const p = products.find(item => item.id === Number(id));
+        if (!p) return "";
+        const sub = p.price * qty;
+        total += sub;
+        return `
+          <div class="flex items-center justify-between gap-2 py-2 border-b border-stone-100">
+            <div>
+              <div class="font-bold text-sm sm:text-base">${p.name}</div>
+              <div class="text-xs text-stone-500">${formatPrice(p.price)} ud. · Subtotal: <strong>${formatPrice(sub)}</strong></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="changeQty(${p.id}, -1)" class="w-8 h-8 rounded-lg bg-stone-100 font-black">−</button>
+              <span class="font-black text-sm w-5 text-center">${qty}</span>
+              <button onclick="changeQty(${p.id}, 1)" class="w-8 h-8 rounded-lg bg-red-700 text-white font-black">+</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("modalTotalAmount").textContent = formatPrice(total);
+    }
+
+    function setOrderMode(mode) {
+      orderMode = mode;
+      ["recoger", "mesa", "domicilio"].forEach(m => {
+        const btn = document.getElementById("mode-" + m);
+        if (m === mode) {
+          btn.className = "py-2.5 px-2 rounded-xl border-2 border-red-700 bg-red-50 text-red-800";
+        } else {
+          btn.className = "py-2.5 px-2 rounded-xl border-2 border-stone-300 bg-white text-stone-700";
+        }
+      });
+
+      const detailInput = document.getElementById("customerDetail");
+      if (mode === "recoger") detailInput.placeholder = "Hora aproximada de recogida (ej. 14:15)";
+      else if (mode === "mesa") detailInput.placeholder = "Número de mesa (ej. Mesa 4)";
+      else detailInput.placeholder = "Dirección completa de entrega";
+    }
+
+    function sendOrderWhatsApp() {
+      const name = document.getElementById("customerName").value.trim() || "Cliente";
+      const detail = document.getElementById("customerDetail").value.trim();
+      const notes = document.getElementById("orderNotes").value.trim();
+
+      let lines = [];
+      let total = 0;
+
+      Object.entries(cart).forEach(([id, qty]) => {
+        const p = products.find(item => item.id === Number(id));
+        if (p) {
+          const sub = p.price * qty;
+          total += sub;
+          lines.push(`• ${qty}x ${p.name} (${formatPrice(sub)})`);
+        }
+      });
+
+      const modeLabel = orderMode === "recoger" ? "🛍️ Recoger en local" : orderMode === "mesa" ? "🪑 Servicio en mesa" : "🛵 Envío a domicilio";
+
+      let msg = `*NUEVO PEDIDO — ${bizInfo.name.toUpperCase()}*\n\n`;
+      msg += `*Modalidad:* ${modeLabel}\n`;
+      msg += `*Cliente:* ${name}\n`;
+      if (detail) msg += `*Detalle:* ${detail}\n`;
+      msg += `\n*Productos:*\n${lines.join("\n")}\n`;
+      if (notes) msg += `\n*Notas:* ${notes}\n`;
+      msg += `\n*TOTAL: ${formatPrice(total)}*`;
+
+      const encoded = encodeURIComponent(msg);
+      window.open(`https://wa.me/${bizInfo.whatsapp}?text=${encoded}`, "_blank");
+    }
+
+    // PANEL DEL DUEÑO
+    function openOwnerLogin() {
+      const code = prompt("Introduce el PIN de gestión del negocio (PIN de prueba: 1234):");
+      if (code === null) return;
+      if (code === bizInfo.pin) {
+        openOwnerModal();
+      } else {
+        alert("PIN incorrecto.");
+      }
+    }
+
+    function openOwnerModal() {
+      document.getElementById("editBizName").value = bizInfo.name;
+      document.getElementById("editBizPhone").value = bizInfo.whatsapp;
+
+      const catSelect = document.getElementById("newProdCat");
+      catSelect.innerHTML = DEFAULT_CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+
+      const currentUrl = encodeURIComponent(window.location.href);
+      document.getElementById("qrImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${currentUrl}`;
+
+      renderOwnerProductList();
+      document.getElementById("ownerModal").classList.remove("hidden");
+    }
+
+    function closeOwnerModal() {
+      document.getElementById("ownerModal").classList.add("hidden");
+    }
+
+    function saveBusinessInfo() {
+      const newName = document.getElementById("editBizName").value.trim();
+      const newPhone = document.getElementById("editBizPhone").value.replace(/\D/g, "");
+      if (newName) bizInfo.name = newName;
+      if (newPhone) bizInfo.whatsapp = newPhone;
+      saveData();
+      applyBizHeader();
+      alert("✅ Datos del negocio guardados.");
+    }
+
+    function addNewProduct() {
+      const name = document.getElementById("newProdName").value.trim();
+      const cat = document.getElementById("newProdCat").value;
+      const price = parseFloat(document.getElementById("newProdPrice").value);
+      const desc = document.getElementById("newProdDesc").value.trim() || "Especialidad de la casa.";
+
+      if (!name || isNaN(price) || price <= 0) {
+        alert("Escribe el nombre del producto y un precio válido.");
+        return;
+      }
+
+      products.unshift({
+        id: Date.now(),
+        cat,
+        name,
+        desc,
+        price,
+        tags: ["popular"],
+        available: true
+      });
+
+      document.getElementById("newProdName").value = "";
+      document.getElementById("newProdPrice").value = "";
+      document.getElementById("newProdDesc").value = "";
+
+      saveData();
+      renderMenu();
+      renderOwnerProductList();
+    }
+
+    function renderOwnerProductList() {
+      const list = document.getElementById("ownerProductList");
+      list.innerHTML = products.map(p => `
+        <div class="p-3 rounded-xl border border-stone-200 flex items-center justify-between gap-2 text-sm">
+          <div class="min-w-0">
+            <div class="font-bold truncate ${!p.available ? "line-through text-stone-400" : ""}">${p.name}</div>
+            <div class="text-xs text-stone-500">${formatPrice(p.price)}</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="editProductPrice(${p.id})" class="px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs font-bold">
+              ✏️ Precio
+            </button>
+            <button onclick="toggleProductAvailability(${p.id})" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${
+              p.available ? "bg-emerald-100 text-emerald-900" : "bg-red-100 text-red-900"
+            }">
+              ${p.available ? "✅ Disponible" : "🚫 Agotado"}
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function toggleProductAvailability(id) {
+      const p = products.find(item => item.id === id);
+      if (!p) return;
+      p.available = !p.available;
+      if (!p.available && cart[id]) {
+        delete cart[id];
+        updateCartBar();
+      }
+      saveData();
+      renderMenu();
+      renderOwnerProductList();
+    }
+
+    function editProductPrice(id) {
+      const p = products.find(item => item.id === id);
+      if (!p) return;
+      const val = prompt(`Nuevo precio para "${p.name}" (en €):`, p.price.toFixed(2));
+      if (val === null) return;
+      const parsed = parseFloat(val.replace(",", "."));
+      if (!isNaN(parsed) && parsed > 0) {
+        p.price = parsed;
+        saveData();
+        renderMenu();
+        renderCartModalItems();
+        updateCartBar();
+        renderOwnerProductList();
+      }
+    }
+
+    function resetDemoCatalog() {
+      if (confirm("¿Restaurar la carta original de demostración?")) {
+        products = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+        saveData();
+        renderMenu();
+        renderOwnerProductList();
+      }
+    }
+  </script>
+</body>
+</html>
